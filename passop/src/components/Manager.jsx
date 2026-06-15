@@ -3,11 +3,13 @@ import { useRef, useState, useEffect } from 'react'
 import { ToastContainer, toast, Bounce } from 'react-toastify';
 import { v4 as uuidv4 } from "uuid";
 
+
 import 'react-toastify/dist/ReactToastify.css';
 
 
 
 const Manager = () => {
+    const API_URL = import.meta.env.VITE_API_URL
     const [showSavedPasswords, setShowSavedPasswords] = useState(false)
     const ref = useRef()
     const passwordRef = useRef()
@@ -17,7 +19,7 @@ const Manager = () => {
 
     useEffect(() => {
         const getPasswords = async () => {
-            let req = await fetch("http://localhost:3000/")
+            let req = await fetch("https://passop-production-fff9.up.railway.app")
             let passwords = await req.json()
             setPasswordArray(passwords)
         }
@@ -62,7 +64,7 @@ const Manager = () => {
         setErrors({})
 
         if (form.site.length > 3 && form.username.length > 3 && form.password.length > 3) {
-            const response = await fetch("http://localhost:3000/", {
+            const response = await fetch("https://passop-production-fff9.up.railway.app", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ...form, id: uuidv4() }),
@@ -70,7 +72,7 @@ const Manager = () => {
             const data = await response.json()
             console.log("POST RESPONSE:", data)
 
-            let req = await fetch("http://localhost:3000/")
+            let req = await fetch("https://passop-production-fff9.up.railway.app")
             let passwords = await req.json()
             setPasswordArray(passwords)
             setform({ site: "", username: "", password: "" })
@@ -83,12 +85,12 @@ const Manager = () => {
     const deletePassword = async (id) => {
         let c = confirm("Do you really want to delete this password?")
         if (c) {
-            await fetch("http://localhost:3000/", {
+            await fetch("https://passop-production-fff9.up.railway.app", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id }),
             })
-            let req = await fetch("http://localhost:3000/")
+            let req = await fetch("https://passop-production-fff9.up.railway.app")
             let passwords = await req.json()
             setPasswordArray(passwords)
             toast('Password Deleted!', {
@@ -103,12 +105,12 @@ const Manager = () => {
     const editPassword = async (id) => {
         let passwordToEdit = passwordArray.find(item => item.id === id)
         setform(passwordToEdit)
-        await fetch("http://localhost:3000/", {
+        await fetch("https://passop-production-fff9.up.railway.app", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id }),
         })
-        let req = await fetch("http://localhost:3000/")
+        let req = await fetch("https://passop-production-fff9.up.railway.app")
         let passwords = await req.json()
         setPasswordArray(passwords)
     }
