@@ -23,9 +23,13 @@ app.use(cors())
 client.connect();
 
 app.get('/', async (req, res) => {
+    const { userId } = req.query
+
     const db = client.db(dbName);
     const collection = db.collection('passwords');
-    const findResult = await collection.find({}).toArray();
+
+    const findResult = await collection.find({ userId }).toArray();
+
     res.json(findResult);
 });
 

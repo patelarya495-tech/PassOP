@@ -2,13 +2,14 @@ import React from 'react'
 import { useRef, useState, useEffect } from 'react'
 import { ToastContainer, toast, Bounce } from 'react-toastify';
 import { v4 as uuidv4 } from "uuid";
-
+import { useUser } from "@clerk/clerk-react";
 
 import 'react-toastify/dist/ReactToastify.css';
 
 
 
 const Manager = () => {
+    const { user } = useUser();
     const API_URL = import.meta.env.VITE_API_URL
     const [showSavedPasswords, setShowSavedPasswords] = useState(false)
     const ref = useRef()
@@ -67,12 +68,18 @@ const Manager = () => {
             const response = await fetch("https://passop-production-fff9.up.railway.app", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...form, id: uuidv4() }),
+                body: JSON.stringify({
+                    ...form,
+                    id: uuidv4(),
+                    userId: user?.id
+                }),
             })
             const data = await response.json()
             console.log("POST RESPONSE:", data)
 
-            let req = await fetch("https://passop-production-fff9.up.railway.app")
+            let req = await fetch(
+                `https://passop-production-fff9.up.railway.app?userId=${user?.id}`
+            )
             let passwords = await req.json()
             setPasswordArray(passwords)
             setform({ site: "", username: "", password: "" })
@@ -90,7 +97,9 @@ const Manager = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id }),
             })
-            let req = await fetch("https://passop-production-fff9.up.railway.app")
+            let req = await fetch(
+                `https://passop-production-fff9.up.railway.app?userId=${user?.id}`
+            )
             let passwords = await req.json()
             setPasswordArray(passwords)
             toast('Password Deleted!', {
@@ -110,7 +119,9 @@ const Manager = () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id }),
         })
-        let req = await fetch("https://passop-production-fff9.up.railway.app")
+        let req = await fetch(
+            `https://passop-production-fff9.up.railway.app?userId=${user?.id}`
+        )
         let passwords = await req.json()
         setPasswordArray(passwords)
     }

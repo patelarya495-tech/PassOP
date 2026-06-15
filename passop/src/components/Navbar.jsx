@@ -1,11 +1,18 @@
 import React from 'react'
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton
+} from "@clerk/clerk-react";
+
 
 const Navbar = () => {
   return (
     <nav className='bg-slate-800 text-white'>
       <div className="mycontainer flex justify-between items-center px-4 py-5 h-14">
 
-       <div className="logo font-bold text-white text-xl md:text-2xl">
+        <div className="logo font-bold text-white text-xl md:text-2xl">
           <span className='text-green-500'> &lt;</span>
 
           <span>Pass</span><span className='text-green-500' >OP/&gt;</span>
@@ -29,6 +36,17 @@ const Navbar = () => {
             GitHub
           </span>
         </button>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className="bg-green-700 text-white px-4 py-2 rounded-full">
+              Sign In
+            </button>
+          </SignInButton>
+        </SignedOut>
+
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
       </div>
 
     </nav>

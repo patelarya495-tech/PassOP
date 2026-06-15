@@ -1,3 +1,9 @@
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton
+} from "@clerk/clerk-react";
 import { useState } from 'react'
 import './App.css'
 import Navbar from './components/Navbar'
