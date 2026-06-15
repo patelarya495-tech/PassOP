@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .mycontainer {
+    @apply container mx-auto px-4 sm:px-8 md:px-16 lg:px-40;
+  }
+}
+
+/* Professional Scrollbar - hover par dikhe, black color */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0);
+  border-radius: 999px;
+  transition: background 0.4s ease;
+}
+
+/* Scrollable element hover pe scrollbar dikhega */
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.75) !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Table cell overflow fix - long URLs/passwords won't break layout */
+.pass-table td {
+  max-width: 160px;
+  overflow: hidden;
+}
+
+.pass-cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.pass-cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+  display: inline-block;
+}
+
+@media (min-width: 768px) {
+  .pass-cell-text {
+    max-width: 200px;
+  }
+  .pass-table td {
+    max-width: 260px;
+  }
+}
