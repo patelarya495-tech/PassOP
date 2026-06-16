@@ -52,23 +52,31 @@ const checkBreach = async (password) => {
 const Manager = () => {
     const { user } = useUser();
     const API_URL = import.meta.env.VITE_API_URL
+    console.log("API_URL =", API_URL)
     const [showSavedPasswords, setShowSavedPasswords] = useState(false)
     const ref = useRef()
     const [showPasswordState, setShowPasswordState] = useState(false)
     const passwordRef = useRef()
-    const [form, setform] = useState({ site: "", username: "", password: "" })
+    const [form, setform] = useState({ site: "", username: "", password: "", id: "" })
     const [passwordArray, setPasswordArray] = useState([])
     const [errors, setErrors] = useState({})
     const [breachStatus, setBreachStatus] = useState("");
 
+    // ✅ FIX: editId alag state mein rakho taaki savePassword mein closure issue na ho
+    const [editId, setEditId] = useState("")
+
     useEffect(() => {
         const getPasswords = async () => {
-            let req = await fetch("https://passop-production-fff9.up.railway.app")
+            if (!user) return
+
+            let req = await fetch(
+                `https://passop-production-fff9.up.railway.app?userId=${user.id}`
+            )
             let passwords = await req.json()
             setPasswordArray(passwords)
         }
         getPasswords()
-    }, [])
+    }, [user])
 
     const copyText = (text) => {
         toast('Copied to clipboard!', {
@@ -102,26 +110,45 @@ const Manager = () => {
         setErrors({})
 
         if (form.site.length > 3 && form.username.length > 3 && form.password.length > 3) {
-            const response = await fetch("https://passop-production-fff9.up.railway.app", {
+
+            // ✅ FIX: editId state se lo (form.id se nahi) — closure issue avoid hota hai
+            // Agar edit mode mein hai to wahi purana id use karo, warna naya banao
+            const passwordId = editId ? editId : uuidv4()
+            console.log("CURRENT editId:", editId)
+            console.log("FORM:", form)
+            const isEditing = Boolean(editId)
+
+            const payload = {
+                site: form.site,
+                username: form.username,
+                password: form.password,
+                id: passwordId,
+                userId: user.id,
+                updatedAt: new Date().toLocaleString()
+            }
+
+            console.log("SAVING PAYLOAD:", payload)
+            console.log("IS EDITING:", isEditing, "| passwordId:", passwordId)
+
+            const response = await fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...form,
-                    id: uuidv4(),
-                    userId: user?.id,
-                    updatedAt: new Date().toLocaleString()
-                }),
+                body: JSON.stringify(payload),
             })
             const data = await response.json()
             console.log("POST RESPONSE:", data)
 
             let req = await fetch(
-                `https://passop-production-fff9.up.railway.app?userId=${user?.id}`
+                `${API_URL}?userId=${user.id}`
             )
             let passwords = await req.json()
             setPasswordArray(passwords)
-            setform({ site: "", username: "", password: "" })
-            toast('Password saved!')
+
+            // ✅ FIX: Form aur editId dono reset karo
+            setform({ site: "", username: "", password: "", id: "" })
+            setEditId("")
+
+            toast(isEditing ? 'Password updated!' : 'Password saved!')
         } else {
             toast('Error: Password not saved!')
         }
@@ -130,13 +157,13 @@ const Manager = () => {
     const deletePassword = async (id) => {
         let c = confirm("Do you really want to delete this password?")
         if (c) {
-            await fetch("https://passop-production-fff9.up.railway.app", {
+            await fetch(API_URL, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id }),
             })
             let req = await fetch(
-                `https://passop-production-fff9.up.railway.app?userId=${user?.id}`
+                `${API_URL}?userId=${user?.id}`
             )
             let passwords = await req.json()
             setPasswordArray(passwords)
@@ -149,23 +176,29 @@ const Manager = () => {
         }
     }
 
+    // ✅ FIX: editId alag state mein set karo
     const editPassword = async (id) => {
         let passwordToEdit = passwordArray.find(item => item.id === id)
+        if (!passwordToEdit) return
+
+        console.log("EDIT DATA:", passwordToEdit)
+
+        // MongoDB ka _id field hata do, baaki sab rakho
+        const { _id, ...formData } = passwordToEdit
 
         setform({
-            ...passwordToEdit,
-            updatedAt: new Date().toLocaleString()
-        });
-        await fetch("https://passop-production-fff9.up.railway.app", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
+            site: formData.site,
+            username: formData.username,
+            password: formData.password,
+            id: formData.id
         })
-        let req = await fetch(
-            `https://passop-production-fff9.up.railway.app?userId=${user?.id}`
-        )
-        let passwords = await req.json()
-        setPasswordArray(passwords)
+
+        // ✅ FIX: editId alag se set karo — yahi ensure karega ki update hoga, naya record nahi banega
+        setEditId(formData.id)
+        console.log("EDIT ID SET:", formData.id)
+
+        // Page ke upar scroll karo
+        window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     const generatePassword = () => {
@@ -234,7 +267,6 @@ const Manager = () => {
                             id="site"
                         />
 
-
                         {errors.site && (
                             <p className="text-red-500 text-sm mt-1 ml-2">{errors.site}</p>
                         )}
@@ -267,7 +299,7 @@ const Manager = () => {
                                     type={showPasswordState ? "text" : "password"}
                                     name="password"
                                     id="password"
-                                     maxLength={64}
+                                    maxLength={64}
                                 />
 
                                 <div className="mt-2">
@@ -290,7 +322,6 @@ const Manager = () => {
                                         {breachStatus}
                                     </p>
 
-
                                 </div>
 
                                 <span className="absolute right-[3px] top-[4px] cursor-pointer" onClick={() => setShowPasswordState(!showPasswordState)}>
@@ -306,7 +337,6 @@ const Manager = () => {
                                         Generate Password
                                     </button>
                                 </div>
-
 
                             </div>
                             {errors.password && (
@@ -328,7 +358,7 @@ const Manager = () => {
                             trigger="hover">
                         </lord-icon>
 
-                        {user ? "Save Password" : "Login Required"}
+                        {user ? (editId ? "Update Password" : "Save Password") : "Login Required"}
                     </button>
                 </div>
 
@@ -415,7 +445,8 @@ const Manager = () => {
                                                         {showSavedPasswords
                                                             ? item.password
                                                             : "•".repeat(item.password.length)}
-                                                    </span>                                                    <div className='lordiconcopy size-7 cursor-pointer flex-shrink-0' onClick={() => copyText(item.password)}>
+                                                    </span>
+                                                    <div className='lordiconcopy size-7 cursor-pointer flex-shrink-0' onClick={() => copyText(item.password)}>
                                                         <lord-icon
                                                             style={{ width: "22px", height: "22px", paddingTop: "3px", paddingLeft: "3px" }}
                                                             src="https://cdn.lordicon.com/iykgtsbt.json"
