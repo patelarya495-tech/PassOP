@@ -6,6 +6,47 @@ import { useUser } from "@clerk/clerk-react";
 
 import 'react-toastify/dist/ReactToastify.css';
 
+const getPasswordStrength = (password) => {
+    let score = 0;
+
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    if (score <= 1)
+        return { text: "Weak", color: "bg-red-500", width: "w-1/3" };
+
+    if (score <= 3)
+        return { text: "Medium", color: "bg-yellow-500", width: "w-2/3" };
+
+    return { text: "Strong", color: "bg-green-500", width: "w-full" };
+};
+
+const checkBreach = async (password) => {
+    if (!password) return "Not Checked";
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+
+    const prefix = hash.slice(0, 5);
+    const suffix = hash.slice(5);
+
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    const text = await res.text();
+
+    return text.includes(suffix)
+        ? "⚠ Breached Password"
+        : "✅ Safe Password";
+};
+
 
 
 const Manager = () => {
@@ -13,10 +54,12 @@ const Manager = () => {
     const API_URL = import.meta.env.VITE_API_URL
     const [showSavedPasswords, setShowSavedPasswords] = useState(false)
     const ref = useRef()
+    const [showPasswordState, setShowPasswordState] = useState(false)
     const passwordRef = useRef()
     const [form, setform] = useState({ site: "", username: "", password: "" })
     const [passwordArray, setPasswordArray] = useState([])
     const [errors, setErrors] = useState({})
+    const [breachStatus, setBreachStatus] = useState("");
 
     useEffect(() => {
         const getPasswords = async () => {
@@ -42,17 +85,11 @@ const Manager = () => {
         navigator.clipboard.writeText(text)
     }
 
-    const showPassword = () => {
-        if (ref.current.src.includes("icons/eyecross.png")) {
-            ref.current.src = "icons/eye.png"
-            passwordRef.current.type = "text"
-        } else {
-            ref.current.src = "icons/eyecross.png"
-            passwordRef.current.type = "password"
-        }
-    }
-
     const savePassword = async () => {
+        if (!user) {
+            toast.error("Please login first");
+            return;
+        }
         const newErrors = {}
         if (!form.site.trim()) newErrors.site = "Website URL is required"
         if (!form.username.trim()) newErrors.username = "Username is required"
@@ -71,7 +108,8 @@ const Manager = () => {
                 body: JSON.stringify({
                     ...form,
                     id: uuidv4(),
-                    userId: user?.id
+                    userId: user?.id,
+                    updatedAt: new Date().toLocaleString()
                 }),
             })
             const data = await response.json()
@@ -113,7 +151,11 @@ const Manager = () => {
 
     const editPassword = async (id) => {
         let passwordToEdit = passwordArray.find(item => item.id === id)
-        setform(passwordToEdit)
+
+        setform({
+            ...passwordToEdit,
+            updatedAt: new Date().toLocaleString()
+        });
         await fetch("https://passop-production-fff9.up.railway.app", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
@@ -126,9 +168,32 @@ const Manager = () => {
         setPasswordArray(passwords)
     }
 
-    const handleChange = (e) => {
-        setform({ ...form, [e.target.name]: e.target.value })
-    }
+    const generatePassword = () => {
+        const chars =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+
+        let password = "";
+
+        for (let i = 0; i < 16; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        setform({ ...form, password });
+    };
+
+    const handleChange = async (e) => {
+        const updatedForm = {
+            ...form,
+            [e.target.name]: e.target.value,
+        };
+
+        setform(updatedForm);
+
+        if (e.target.name === "password") {
+            const result = await checkBreach(e.target.value);
+            setBreachStatus(result);
+        }
+    };
 
     return (
         <>
@@ -168,6 +233,8 @@ const Manager = () => {
                             name="site"
                             id="site"
                         />
+
+
                         {errors.site && (
                             <p className="text-red-500 text-sm mt-1 ml-2">{errors.site}</p>
                         )}
@@ -197,13 +264,50 @@ const Manager = () => {
                                     onChange={handleChange}
                                     placeholder="Enter Password"
                                     className="rounded-full border border-green-500 w-full p-4 py-1"
-                                    type="password"
+                                    type={showPasswordState ? "text" : "password"}
                                     name="password"
                                     id="password"
+                                     maxLength={64}
                                 />
-                                <span className="absolute right-[3px] top-[4px] cursor-pointer" onClick={showPassword}>
-                                    <img ref={ref} className="p-1" width={26} src="icons/eye.png" alt="eye" />
+
+                                <div className="mt-2">
+                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className={`${getPasswordStrength(form.password).color} ${getPasswordStrength(form.password).width} h-full transition-all duration-300`}
+                                        ></div>
+                                    </div>
+
+                                    <p className="text-sm mt-1 font-medium">
+                                        Strength: {getPasswordStrength(form.password).text}
+                                    </p>
+
+                                    <p
+                                        className={`text-sm font-medium mt-1 ${breachStatus.includes("Breached")
+                                            ? "text-red-500"
+                                            : "text-green-600"
+                                            }`}
+                                    >
+                                        {breachStatus}
+                                    </p>
+
+
+                                </div>
+
+                                <span className="absolute right-[3px] top-[4px] cursor-pointer" onClick={() => setShowPasswordState(!showPasswordState)}>
+                                    <img ref={ref} className="p-1" width={26} src={showPasswordState ? "icons/eye.png" : "icons/eyecross.png"} alt="eye" />
                                 </span>
+
+                                <div className="flex justify-center mt-3">
+                                    <button
+                                        type="button"
+                                        onClick={generatePassword}
+                                        className="px-5 py-2 bg-slate-800 text-white rounded-full hover:bg-slate-700 transition-all duration-300"
+                                    >
+                                        Generate Password
+                                    </button>
+                                </div>
+
+
                             </div>
                             {errors.password && (
                                 <p className="text-red-500 text-sm mt-1 ml-2">{errors.password}</p>
@@ -213,23 +317,52 @@ const Manager = () => {
 
                     <button
                         onClick={savePassword}
-                        className='text-black flex justify-center items-center gap-2 bg-green-400 hover:bg-green-300 rounded-full px-8 py-2 w-fit border border-green-900'
+                        disabled={!user}
+                        className={`text-black flex justify-center items-center gap-2 rounded-full px-8 py-2 w-fit border border-green-900 ${user
+                            ? "bg-green-400 hover:bg-green-300"
+                            : "bg-gray-300 cursor-not-allowed"
+                            }`}
                     >
-                        <lord-icon src="https://cdn.lordicon.com/efxgwrkc.json" trigger="hover"></lord-icon>
-                        Save Password
+                        <lord-icon
+                            src="https://cdn.lordicon.com/efxgwrkc.json"
+                            trigger="hover">
+                        </lord-icon>
+
+                        {user ? "Save Password" : "Login Required"}
                     </button>
                 </div>
 
                 <div className="passwords">
-                    <h2 className='font-bold text-2xl py-4'>Your Passwords</h2>
-                    <button
-                        onClick={() => setShowSavedPasswords(!showSavedPasswords)}
-                        className="mb-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                        {showSavedPasswords ? "Hide Passwords" : "Show Passwords"}
-                    </button>
+                    {!user && (
+                        <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 p-4 rounded-lg mb-4">
+                            Please login to view and manage your passwords.
+                        </div>
+                    )}
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-4">
+                        <h2 className='font-bold text-2xl'>
+                            Your Passwords
+                            <span className='text-green-600 text-base ml-2'>
+                                ({passwordArray.length})
+                            </span>
+                        </h2>
+
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                        <input
+                            type="text"
+                            placeholder="Search passwords..."
+                            className="w-[400px] border border-green-400 rounded-full px-5 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+
+                        <button
+                            onClick={() => setShowSavedPasswords(!showSavedPasswords)}
+                            className="px-6 py-2.5 bg-green-600 text-white rounded-full hover:bg-green-700 transition-all duration-300 whitespace-nowrap"
+                        >
+                            {showSavedPasswords ? "Hide Passwords" : "Show Passwords"}
+                        </button>
+                    </div>
                     {passwordArray.length === 0 && <div>No passwords to show</div>}
-                    {passwordArray.length !== 0 &&
+                    {user && passwordArray.length !== 0 &&
                         <div className="overflow-x-auto rounded-md mb-10">
                             <table className="pass-table table-auto w-full min-w-[500px] rounded-md overflow-hidden text-xs md:text-sm lg:text-base">
                                 <thead className='bg-green-800 text-white'>
@@ -237,6 +370,7 @@ const Manager = () => {
                                         <th className='py-2 px-3 text-left'>Site</th>
                                         <th className='py-2 px-3 text-left'>Username</th>
                                         <th className='py-2 px-3 text-left'>Password</th>
+                                        <th className='py-2 px-3 text-left'>Updated</th>
                                         <th className='py-2 px-3 text-center'>Actions</th>
                                     </tr>
                                 </thead>
@@ -289,6 +423,9 @@ const Manager = () => {
                                                         </lord-icon>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td className='py-2 px-3 border border-white'>
+                                                {item.updatedAt || "N/A"}
                                             </td>
                                             <td className='py-2 px-3 border border-white text-center'>
                                                 <span className='cursor-pointer mx-1 inline-block' onClick={() => editPassword(item.id)}>

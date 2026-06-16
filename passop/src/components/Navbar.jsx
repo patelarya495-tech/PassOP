@@ -26,28 +26,47 @@ const Navbar = () => {
             <a className='hover:font-bold' href="#">Contact</a>
           </li>
         </ul> */}
-        <button className='text-white bg-green-700 rounded-full flex justify-between items-center ring-white ring-1 px-2 py-1'>
-          <img
-            className='invert w-8 md:w-10 p-1'
-            src="icons/github.svg"
-            alt="github logo"
-          />
-          <span className='font-bold text-sm md:text-base px-2'>
-            GitHub
-          </span>
-        </button>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button className="bg-green-700 text-white px-4 py-2 rounded-full">
-              Sign In
-            </button>
-          </SignInButton>
-        </SignedOut>
+        <div className="flex items-center gap-4">
 
-        <SignedIn>
-          <UserButton />
-        </SignedIn>
-      </div>
+  <a
+    href="https://github.com/patelarya495-tech/PassOP"
+    target="_blank"
+    rel="noreferrer"
+   className='h-11 w-[120px] text-white bg-green-700 rounded-full flex items-center justify-center gap-2 transition-all duration-300 hover:bg-green-600 hover:scale-105'
+  >
+    <img
+      className='invert w-5 p-0'
+      src="icons/github.svg"
+      alt="github logo"
+    />
+    <span className='font-semibold text-sm'>
+      GitHub
+    </span>
+  </a>
+
+  <SignedOut>
+    <SignInButton mode="modal">
+      <button className="h-11 w-[105px] bg-white text-black rounded-full font-semibold flex items-center justify-center transition-all duration-300 hover:bg-gray-200 hover:scale-105">
+        Login
+      </button>
+    </SignInButton>
+  </SignedOut>
+
+  <SignedIn>
+    <div className="h-11 w-11 flex items-center justify-center rounded-full overflow-hidden ring-2 ring-green-500">
+  <UserButton
+    afterSignOutUrl="/"
+    appearance={{
+      elements: {
+        avatarBox: "h-11 w-11"
+      }
+    }}
+  />
+</div>
+  </SignedIn>
+
+</div>
+</div>
 
     </nav>
   )
